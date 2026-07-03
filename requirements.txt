@@ -7,3 +7,4 @@ tiktoken
 langgraph 
 python-dotenv
 streamlit
+numpy==1.26.4

@@ -1,31 +1,34 @@
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
+from graph.tools.sql_tool import query_football_analytics_db
 
-# Define the structured routing choices for the LLM
 class RouteQuery(BaseModel):
-    """Route a user query to the most applicable datasource."""
+    """Fallback structural path tracking if no tool queries are triggered."""
     datasource: str = Field(
-        description="The destination datasource for the query, choose 'websearch' or 'vectorstore'"
+        description="The ultimate destination for the question. Choose 'websearch' or 'vectorstore'."
     )
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
-structured_llm_router = llm.with_structured_output(RouteQuery)
+
+# Bind the SQL function natively to the router model
+router_model_with_tools = llm.bind_tools([query_football_analytics_db])
+structured_fallback_router = llm.with_structured_output(RouteQuery)
 
 system_prompt = (
-    "You are an expert router directing user questions to a SQL Database, a vector store or a web search engine.\n"
-    "CRITERIA FOR CHOOSING:\n"
-    "1. Use 'sql_node' for inquiries seeking quantitative stats, market values, player goals, assists, contracts, or specific player/club table data.\n"
-    "2. Use 'vectorstore' for conceptual rule interpretations, referee protocols, yellow/red card parameters, or official IFAB Laws.\n"
-    "3. Use 'websearch' for live scores from tonight, breaking news, injuries, transfers happening right now, or real-time event tables."
+    "You are a master triage routing controller guiding questions through a data graph.\n\n"
+    "CRITERIA:\n"
+    "1. If a question contains unknown statistical properties or dynamic variable metrics "
+    "(e.g., 'top scorer', 'most cards', 'highest market value'), you MUST call 'query_football_analytics_db'.\n"
+    "2. If the prompt targets explicit static structural regulations or rule definitions without dynamic lookups, "
+    "DO NOT use tools. Simply choose your fallback destination path."
 )
 
-route_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system_prompt),
-        ("human", "{question}"),
-    ]
-)
+route_prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    ("human", "{question}")
+])
 
-# Connect it to our executable routing chain
-question_router_chain = route_prompt | structured_llm_router
+# Export both specialized execution elements
+router_base_chain = route_prompt | router_model_with_tools
+fallback_router_chain = route_prompt | structured_fallback_router

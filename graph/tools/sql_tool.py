@@ -4,25 +4,15 @@ from langchain_core.tools import tool
 @tool
 def query_football_analytics_db(sql_query: str) -> str:
     """
-    Executes an analytic SQLite query against the football database to retrieve structured data.
-    Input must be a valid, executable SQL query string.
+    Executes a raw SQLite query against the local football hub database.
+    Use this tool to resolve dynamic player stats, goals, assists, yellow cards, 
+    market values, clubs, positions, or contract expirations.
     
-    Database Schema:
-    Table: players
-    - player_id (INTEGER, Primary Key)
-    - name (TEXT)
-    - club (TEXT)
-    - position (TEXT)
-    - market_value (INTEGER)
-    - contract_expiry (TEXT)
-
-    Table: match_stats
-    - stat_id (INTEGER, Primary Key)
-    - player_id (INTEGER, Foreign Key referencing players.player_id)
-    - goals (INTEGER)
-    - assists (INTEGER)
-    - yellow_cards (INTEGER)
-    - minutes_played (INTEGER)
+    The database contains two tables:
+    1. 'players' (player_id, name, club, position, market_value, contract_expiry)
+    2. 'match_stats' (stat_id, player_id, goals, assists, yellow_cards, minutes_played)
+    
+    Input must be a valid, clean SQLite statement.
     """
     try:
         conn = sqlite3.connect("football_hub.db")
@@ -30,14 +20,17 @@ def query_football_analytics_db(sql_query: str) -> str:
         cursor.execute(sql_query)
         rows = cursor.fetchall()
         
-        # Extract column names to format cleanly
-        colnames = [desc[0] for desc in cursor.description]
-        conn.close()
-        
-        results = []
-        for r in rows:
-            results.append(str(dict(zip(colnames, r))))
+        if not rows:
+            return "No matching database records found."
             
-        return "\n".join(results) if results else "No matching statistical entries found."
+        # Format columns dynamically for the model's text context
+        colnames = [description[0] for description in cursor.description]
+        result_strings = []
+        for row in rows:
+            row_dict = dict(zip(colnames, row))
+            result_strings.append(str(row_dict))
+            
+        conn.close()
+        return "\n".join(result_strings)
     except Exception as e:
-        return f"Database execution error: {e}"
+        return f"SQL Error encountered during execution: {str(e)}"

@@ -1,40 +1,26 @@
-import os
 from typing import Any, Dict
+from langchain_core.documents import Document
 from graph.state import GraphState
 from graph.chains.retriever import retriever
 
-DEBUG_DIR = "debug"
-DEBUG_FILE = os.path.join(DEBUG_DIR, "retrieved_docs.txt")
-
 def retrieve(state: GraphState) -> Dict[str, Any]:
-    print("---NODE: RETRIEVING DOCUMENTS FROM CHROMA---")
+    print("---NODE: RUNNING CHAINED KNOWLEDGE RETRIEVAL---")
     question = state["question"]
+    existing_docs = state.get("documents", []) or []
     
-    # Fetch documents from our database
-    documents = retriever.invoke(question)
+    # Isolate previous database inputs from the global notebook
+    sql_facts = ""
+    for doc in existing_docs:
+        if doc.metadata.get("source") == "sql_database":
+            sql_facts += f"\nResolved Data Facts: {doc.page_content}"
+            
+    search_query = question
+    if sql_facts:
+        # Augment the text search query vector with your fresh SQL results
+        search_query = f"{question} {sql_facts}"
+        print(f"  -> Augmented Vector Search Query: {search_query}")
+        
+    chroma_documents = retriever.invoke(search_query)
     
-    # Print retrieved documents for debugging
-    print(f"  -> Retrieved {len(documents)} documents")
-    for i, doc in enumerate(documents):
-        source = doc.metadata.get("source", "unknown")
-        page = doc.metadata.get("page", "N/A")
-        preview = doc.page_content[:150].replace("\n", " ")
-        print(f"  -> Doc {i+1} | source: {source} | page: {page}")
-        print(f"     Preview: {preview}...")
-    
-    # Save full documents to file for offline debugging
-    os.makedirs(DEBUG_DIR, exist_ok=True)
-    with open(DEBUG_FILE, "w", encoding="utf-8") as f:
-        f.write(f"QUERY: {question}\n")
-        f.write(f"TOTAL DOCUMENTS RETRIEVED: {len(documents)}\n")
-        f.write("=" * 60 + "\n\n")
-        for i, doc in enumerate(documents):
-            f.write(f"--- DOCUMENT {i+1} ---\n")
-            f.write(f"Source: {doc.metadata.get('source', 'unknown')}\n")
-            f.write(f"Page: {doc.metadata.get('page', 'N/A')}\n")
-            f.write(f"Content:\n{doc.page_content}\n")
-            f.write("\n" + "-" * 40 + "\n\n")
-    print(f"  -> Saved full documents to {DEBUG_FILE}")
-    
-    # Pass retrieved chunks down to the next node in the graph state
-    return {"documents": documents, "question": question}
+    # Safely merge both historical structures back into the graph notebook
+    return {"documents": existing_docs + chroma_documents, "question": question}
