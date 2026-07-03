@@ -1,55 +1,60 @@
-# ⚽ Football Adaptive RAG: Pitch-Side Intel: Tactical Rules & Analytics AI Hub
+# Football Adaptive RAG: Tactical Rules & Analytics AI Hub
 
-An advanced, self-correcting, multi-routing AI agent architecture built using **LangGraph** and **Gemini 2.5-flash**. This application acts as a specialized intelligent assistant for football (soccer) analytics, official regulations, and live current events.
+An advanced, autonomous multi-routing AI agent architecture built using **LangGraph** and **Gemini 2.5-flash**. This system acts as an elite analytical assistant capable of seamlessly linking structured sports performance data (SQLite) with unstructured regulatory context (Chroma Vector DB) and real-time open-web fallbacks (Tavily Search Engine).
 
-By combining structured data engineering (SQLite) with unstructured semantic search (Chroma VDB Vector RAG) and real-time open-web fallbacks (Tavily Engine), the system intelligently orchestrates workflows to resolve complex, multi-intent football prompts with zero hallucinations.
+By implementing a **Chained Structured-to-Unstructured Retrieval** pattern, the agent dynamically resolves implicit data dependencies (such as identifying an unnamed top scorer or player profile via SQL) and leverages those facts to run highly precise semantic vector lookups against official regulatory frameworks.
 
 ---
 
-## 🏗️ Architecture Blueprint
+## Architecture Blueprint
 
-The core philosophy of this project is **Router-First Deterministic Triaging** coupled with a **Self-Correction Loop (Self-RAG)**. Instead of blindly sending every user prompt to an LLM, the system processes queries through an intentional pipeline of controllers, verification critics, and specialized data layers:
+The core architecture transitions away from static, single-destination triage routers. Instead, the entry checkpoint handles autonomous tool execution loop-backs to resolve entity criteria before advancing down the knowledge extraction pipeline:
 
+```text
                       [START]
-                         │
-                  (route_question)
-                   ╱     │      ╲
-                  ▼      ▼       ▼
-           [WEBSEARCH] [RETRIEVE] [SQL_NODE]
-                │        │           │
-                │        ▼           │
-                │ [GRADE_DOCUMENTS]  │
-                │  ╱           ╲     │
-                ▼ ▼             ▼    ▼
-           ┌► [WEBSEARCH] ───► [GENERATE] ◄──────────┐
-           │                        │                │
-           │                        ▼                │
-           │               (grade_generation)        │
-           │                 ╱      │       ╲        │
-           │       (not useful)  (useful) (not supported)
-           └─────────────┘          │                │
-                                    ▼                │
-                                  [END] ─────────────┘
+                        │
+                        ▼
+                 [router_node] ◄────┐
+                        │            │
+                        ▼            │ (Loops back to enrich
+                (route_after_triage) │  variables if needed)
+                 ╱      │      ╲     │
+                ▼       ▼       ▼    │
+      [WEBSEARCH]  [RETRIEVE]  [SQL_TOOL] ┘
+           │            │
+           │            ▼
+           │     [GRADE_DOCUMENTS]
+           │      ╱             ╲
+           ▼     ▼               ▼
+           └─► [WEBSEARCH] ──► [GENERATE] ◄──┐
+                                    │        │
+                                    ▼        │ (not supported)
+                           (grade_generation)│
+                             ╱      │      ╲ │
+                  (not useful)   (useful)   ─┘
+                       │            │
+                       ▼            ▼
+                  [WEBSEARCH]     [END]
 
 ```
 
-```
+### Advanced Pipeline Checkpoints
 
-### The Processing Checkpoints
-1. **Adaptive Intent Routing:** At the gate, a structured routing classifier determines whether the question requires structured historical statistics (`sql_node`), official structural regulations (`vectorstore`), or real-time breaking events (`websearch`).
-2. **Corrective Data Expansion (CRAG):** Document vectors fetched from the local store are graded individually for relevance. If any chunk is identified as off-topic or empty, the engine automatically branches sideways to pull live web context to prevent pipeline starvation.
-3. **Self-Correction Critic (Self-RAG):** Final response drafts are intercepted and evaluated. If the critic detects an ungrounded claim (hallucination), it forces an immediate inward loop back to the generator node for a zero-temperature rewrite.
+1. **Tool-Aware Gate Triage (`router_node`):** The question hits a central controller. If a query contains dynamic variables (e.g., *"the top scorer at Real Madrid"*), the router dynamically invokes the native SQL tool, reads the matching database profile, appends the facts to the graph state, and loops back to execute the final routing path.
+2. **Chained Context Retrieval (`retrieve`):** If data facts were extracted during the triage phase, the retrieval node captures them and augments the vector search query string. Chroma receives a laser-focused vector query containing the explicit player identities or stats, yielding hyper-relevant document chunks.
+3. **Corrective Data Expansion (CRAG):** Retrieved context blocks are graded for semantic relevance. If the local knowledge base falls short, a corrective branch pulls open-web snippets via Tavily to prevent context starvation.
+4. **Self-Correction Logic (Self-RAG):** The generation node outputs a text response which must clear consecutive grounding and utility critic filters. Hallucinations trigger a localized `not supported` loop-back directly to the **`GENERATE`** node for a rapid, zero-temperature text rewrite, completely bypassing the gateway router.
 
 ---
 
 ## 🛠️ Tech Stack & Dependencies
 
-- **Orchestration Framework:** LangGraph (StateGraph architecture)
-- **Language & Embedding Intelligence:** Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`)
-- **Unstructured Database:** Chroma DB (Vector Vectorstore)
-- **Structured Database:** SQLite3 (Local Analytical Relational Store)
-- **Live Search Integration:** Tavily Search Engine API
-- **User Interface:** Streamlit (Custom Sport-Aesthetic Interactive UI layout)
+* **Orchestration Engine:** LangGraph (StateGraph architecture)
+* **Model Intelligence:** Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`)
+* **Unstructured Index Store:** Chroma DB (Vector Vectorstore)
+* **Structured Ledger:** SQLite3 (Local Relational Performance & Valuation Engine)
+* **External Web Connectivity:** Tavily Search Engine API
+* **User Interface:** Streamlit (Custom interactive football analytics dashboard)
 
 ---
 
@@ -58,11 +63,11 @@ The core philosophy of this project is **Router-First Deterministic Triaging** c
 ```text
 football-adaptive-rag/
 │
-├── data/                    # Storage folder for raw rulebook PDFs
+├── data/                    # Local storage for official PDF rulebooks
 │   └── IFAB_Laws_2024_2025.pdf
 │
-├── graph/                   # Master Graph Packages
-│   ├── chains/              # LCEL Executable Chains & Graders
+├── graph/                   # Core Agent Architecture
+│   ├── chains/              # Execution Chains & Evaluation Graders
 │   │   ├── answer_grader.py
 │   │   ├── document_grader.py
 │   │   ├── generation.py
@@ -70,32 +75,34 @@ football-adaptive-rag/
 │   │   ├── retriever.py
 │   │   └── router.py
 │   │
-│   ├── nodes/               # Graph Vertices (Python Execution Code)
+│   ├── nodes/               # Graph Vertices (Execution Handlers)
 │   │   ├── generate.py
 │   │   ├── grade_documents.py
 │   │   ├── retrieve.py
-│   │   ├── sql_node.py
 │   │   └── web_search.py
 │   │
-│   ├── consts.py            # Central string GLossary Constants
-│   ├── graph.py             # Main StateGraph Compiled Blueprint Topology
-│   └── state.py             # Global TypedDict Global Shared Notebook
+│   ├── tools/               # Native Python Tooling Functions
+│   │   └── sql_tool.py
+│   │
+│   ├── consts.py            # Central string constants glossary
+│   ├── graph.py             # Compiled StateGraph Blueprint & Edge Maps
+│   └── state.py             # Global TypedDict Shared Notebook State
 │
-├── .env                     # Local Environment Secrets Keys
-├── app.py                   # Streamlit Production Frontend Entry point
-├── seed_db.py               # Database initialization and seeding script
-├── ingest.py                # Text layout sanitation and Vector ingestion engine
-└── main.py                  # Headless Terminal Testing Script
+├── .env                     # Local Environment Secrets Configuration
+├── app.py                   # Streamlit Frontend UI Application
+├── seed_db.py               # Generates and seeds the 50-player database
+├── ingest.py                # PDF Text Sanitizer and Chroma Vector Ingestion
+└── main.py                  # Headless Terminal Pipeline Verification
 
 ```
 
 ---
 
-## 🚀 Setup & Execution Guide
+## 🚀 Installation & Operation
 
 ### 1. Environment Setup
 
-Clone the repository and initialize a virtual environment:
+Clone the repository and spin up a localized virtual environment:
 
 ```bash
 git clone [https://github.com/yourusername/football-adaptive-rag.git](https://github.com/yourusername/football-adaptive-rag.git)
@@ -106,9 +113,9 @@ pip install -r requirements.txt
 
 ```
 
-### 2. Configure Credentials
+### 2. Configure Environment Secrets
 
-Create a `.env` file in the root directory and append your developer keys:
+Construct a local `.env` file in the root directory and append your developer credentials:
 
 ```env
 GOOGLE_API_KEY="AIzaSyYourGeminiKeyHere"
@@ -116,22 +123,22 @@ TAVILY_API_KEY="tvly-YourTavilyKeyHere"
 
 ```
 
-### 3. Initialize Databases
+### 3. Initialize the Core Data Layers
 
-Seed the relational SQLite database and execute the layout-sanitized PDF ingestion pipeline:
+Wipe and build the enriched 50-player relational database, then execute the text layout sanitation ingestion pipeline:
 
 ```bash
-# Seeding player values & performance match stats
+# Seed 50 global players spanning major leagues with performance metrics
 python seed_db.py
 
-# Running PDF parser, cleaning hard newline layout breaks, and saving to Chroma
+# Purge old vector caches, strip PDF hard coordinate breaks, and index to Chroma
 python ingest.py
 
 ```
 
 ### 4. Boot Up the Interface
 
-Launch the real-time interactive Streamlit analytics window:
+Launch the multi-column sports-analytics tracking interface:
 
 ```bash
 streamlit run app.py
@@ -140,10 +147,11 @@ streamlit run app.py
 
 ---
 
-## 💡 Key Architectural Optimizations Showcase
+## 💡 Engineering & Optimization Highlights
 
-This project implements specific micro-level optimizations engineered to overcome real-world LLM and formatting bottlenecks:
+This pipeline implements specific enterprise-level patterns engineered to overcome common LLM limitations:
 
-* **PDF Layout Sanitation:** Avoids the standard flaw where standard text splitters cut sentences in half due to graphical coordinate newline breaks (`\n`) hardcoded into PDF document engines. `ingest.py` sanitizes paragraphs into contiguous text objects before chunking to maximize semantic relevance scores.
-* **API Rate-Limit Defense:** Out of the box, the Google AI Studio free tier enforces a strict 5 Requests Per Minute (RPM) ceiling. The document grading loop incorporates calculated architectural delay pacing (`time.sleep(12)`) to prevent transient `429 RESOURCE_EXHAUSTED` faults during continuous matrix processing loops.
-* **Deterministic Math Processing:** Financial valuations and player stats are intentionally isolated to an executive relational database. Offloading aggregations and numeric filters to SQLite prevents standard LLM counting and math hallucination errors completely.
+* **Query Disconnect Resolution via Chained Retrieval:** Solves the classic problem where a RAG pipeline fails because it doesn't know what database entity a user is talking about. Resolving the structured SQL data *before* query vectorization guarantees the retriever evaluates exact real-world context matches.
+* **Layout-Aware PDF Ingestion:** Overcomes the standard flaw where PDF extraction tools capture coordinate-based hard line breaks (`\n`), chopping sentences in half mid-word. Text is programmatically re-stitched into contiguous paragraphs before chunking to maximize semantic embedding scores.
+* **Deterministic Math Processing:** Financial valuations, scoring calculations, and threshold filters are explicitly managed by SQLite3. Offloading these operations ensures mathematically perfect data filtering with zero model calculation error.
+* **Deterministic Graph Validation:** Leverages Pydantic validation bindings via LangChain's `.with_structured_output()` syntax to guarantee that edge paths routing down state branches remain strictly type-safe and free from loose text format parsing issues.
