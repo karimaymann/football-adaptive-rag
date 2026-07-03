@@ -1,0 +1,8 @@
+langchain-community 
+langchain-chroma 
+langchain-google-genai 
+pypdf 
+tiktoken 
+langgraph 
+python-dotenv
+streamlit
