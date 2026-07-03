@@ -1,5 +1,6 @@
 langchain-community 
-langchain-chroma 
+langchain-chroma==0.2.3
+chromadb==0.6.3
 langchain-google-genai 
 pypdf 
 tiktoken 

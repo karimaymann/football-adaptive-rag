@@ -110,21 +110,97 @@ st.markdown("""
         background: #FFFFFF;
         border: 1px solid #DEE2E6;
         border-radius: 12px;
-        padding: 16px;
+        padding: 16px 20px;
         max-height: 70vh;
         overflow-y: auto;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 0.8rem;
+        line-height: 1.7;
     }
     
-    .logs-container pre {
-        color: #111111 !important;
-        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
-        font-size: 0.82rem !important;
-        line-height: 1.6 !important;
-        white-space: pre-wrap !important;
-        word-wrap: break-word !important;
-        margin: 0 !important;
-        background: transparent !important;
+    .log-line {
+        padding: 2px 0;
+    }
+    
+    .log-separator {
+        color: #CED4DA;
+        font-weight: 600;
+        padding: 6px 0 2px 0;
+    }
+    
+    .log-prompt {
+        color: #111111;
+        font-weight: 700;
+        padding: 0 0 6px 0;
+    }
+    
+    .log-node {
+        background: rgba(46, 125, 50, 0.08);
+        color: #2E7D32;
+        font-weight: 700;
+        padding: 6px 10px;
+        margin: 6px 0 2px 0;
+        border-left: 3px solid #2E7D32;
+        border-radius: 0 6px 6px 0;
+    }
+    
+    .log-route {
+        color: #1565C0;
+        font-weight: 600;
+        padding: 2px 0 2px 12px;
+    }
+    
+    .log-pass {
+        color: #2E7D32;
+        font-weight: 600;
+        padding: 2px 0 2px 12px;
+    }
+    
+    .log-fail {
+        color: #C62828;
+        font-weight: 600;
+        padding: 2px 0 2px 12px;
+    }
+    
+    .log-detail {
+        color: #555555;
+        padding: 2px 0 2px 12px;
+    }
+    
+    .log-sql {
+        background: #F5F5F5;
+        border: 1px solid #E0E0E0;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin: 4px 0 4px 12px;
+        color: #37474F;
+        font-size: 0.75rem;
+        word-break: break-all;
+    }
+    
+    .log-finished {
+        color: #6C757D;
+        font-style: italic;
+        padding: 2px 0 2px 0;
+        border-bottom: 1px solid #F0F0F0;
+        margin-bottom: 4px;
+    }
+    
+    .log-error {
+        color: #C62828;
+        font-weight: 700;
+        background: rgba(198, 40, 40, 0.06);
+        padding: 6px 10px;
+        border-left: 3px solid #C62828;
+        border-radius: 0 6px 6px 0;
+        margin: 4px 0;
+    }
+    
+    .log-cooldown {
+        color: #9E9E9E;
+        font-size: 0.72rem;
+        padding: 1px 0 1px 20px;
     }
     
     .logs-container::-webkit-scrollbar {
@@ -185,22 +261,70 @@ class StreamCapture(io.StringIO):
         self._original.flush()
         super().flush()
 
-# Helper: render the log text into the diagnostics placeholder
+# Helper: render the log text into the diagnostics placeholder with styling
 def render_logs(placeholder, log_text: str):
     if not log_text.strip():
         placeholder.markdown(
-            '<div class="logs-container"><pre style="color: #6c757d;">'
+            '<div class="logs-container" style="text-align: center; padding: 40px 20px; color: #9E9E9E;">'
             '🔄 Waiting for query submission to trace execution path...'
-            '</pre></div>',
+            '</div>',
             unsafe_allow_html=True
         )
-    else:
-        import html as html_module
-        safe_text = html_module.escape(log_text)
-        placeholder.markdown(
-            f'<div class="logs-container"><pre>{safe_text}</pre></div>',
-            unsafe_allow_html=True
-        )
+        return
+    
+    import html as html_module
+    lines = log_text.split('\n')
+    html_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        
+        safe = html_module.escape(stripped)
+        
+        # Classify each line by its content pattern
+        if stripped.startswith('====='):
+            html_lines.append(f'<div class="log-separator">{safe}</div>')
+        elif stripped.startswith('USER PROMPT:'):
+            html_lines.append(f'<div class="log-prompt">{safe}</div>')
+        elif stripped.startswith('---NODE:'):
+            html_lines.append(f'<div class="log-node">{safe}</div>')
+        elif stripped.startswith('--- ROUTING') or stripped.startswith('--- ASSESSING') or stripped.startswith('--- CRITIC:'):
+            html_lines.append(f'<div class="log-node">{safe}</div>')
+        elif '-> ROUTE DECISION:' in stripped:
+            html_lines.append(f'<div class="log-route">→ {html_module.escape(stripped.split("ROUTE DECISION:")[1].strip())}</div>')
+        elif '-> DECISION:' in stripped:
+            html_lines.append(f'<div class="log-route">→ {html_module.escape(stripped.split("DECISION:")[1].strip())}</div>')
+        elif 'CRITIC PASS:' in stripped:
+            html_lines.append(f'<div class="log-pass">✓ {html_module.escape(stripped.split("CRITIC PASS:")[1].strip())}</div>')
+        elif 'CRITIC FAIL:' in stripped:
+            html_lines.append(f'<div class="log-fail">✗ {html_module.escape(stripped.split("CRITIC FAIL:")[1].strip())}</div>')
+        elif '-> Generated SQL Command:' in stripped:
+            sql = html_module.escape(stripped.split('Generated SQL Command:')[1].strip())
+            html_lines.append(f'<div class="log-detail">→ Generated SQL Command:</div>')
+            html_lines.append(f'<div class="log-sql">{sql}</div>')
+        elif 'DOCUMENT RELEVANT' in stripped or 'DOCUMENT NOT RELEVANT' in stripped:
+            if 'NOT RELEVANT' in stripped:
+                html_lines.append(f'<div class="log-fail">✗ DOCUMENT NOT RELEVANT</div>')
+            else:
+                html_lines.append(f'<div class="log-pass">✓ DOCUMENT RELEVANT</div>')
+        elif 'Finished running Node:' in stripped:
+            html_lines.append(f'<div class="log-finished">{safe}</div>')
+        elif 'ERROR' in stripped or '⚠️' in stripped:
+            html_lines.append(f'<div class="log-error">{safe}</div>')
+        elif 'Cooling down' in stripped or '...Cool' in stripped:
+            html_lines.append(f'<div class="log-cooldown">{safe}</div>')
+        elif stripped.startswith('-> Retrieved') or stripped.startswith('-> Doc') or stripped.startswith('Preview:') or stripped.startswith('-> Saved'):
+            html_lines.append(f'<div class="log-detail">{safe}</div>')
+        else:
+            html_lines.append(f'<div class="log-detail">{safe}</div>')
+    
+    content = '\n'.join(html_lines)
+    placeholder.markdown(
+        f'<div class="logs-container">{content}</div>',
+        unsafe_allow_html=True
+    )
 
 # -------------------------------------------------------------
 # COLUMN 1: CONVERSATIONAL INTERFACE

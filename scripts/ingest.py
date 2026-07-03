@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 load_dotenv()
@@ -45,6 +45,7 @@ def main():
     vectorstore = Chroma.from_documents(
         documents=docs,
         embedding=embeddings,
+        collection_name="football_rules_collection",
         persist_directory=persist_directory
     )
     
